@@ -66,24 +66,18 @@
 		} finally {
 			loading = false;
 		}
-	}
-	function getStatusColor(status: string): string {
+	}	function getStatusColor(status: string): string {
 		switch (status) {
+			case 'Đã giao':
 			case 'Đã giao hàng':
 			case 'Delivered':
 				return 'bg-green-100 text-green-800';
-			case 'Đang giao hàng':
-			case 'Shipped':
-				return 'bg-blue-100 text-blue-800';
 			case 'Đang xử lý':
 			case 'Processing':
 				return 'bg-yellow-100 text-yellow-800';
 			case 'Đã hủy':
 			case 'Cancelled':
 				return 'bg-red-100 text-red-800';
-			case 'Đã xác nhận':
-			case 'Confirmed':
-				return 'bg-indigo-100 text-indigo-800';
 			default:
 				return 'bg-gray-100 text-gray-800';
 		}
@@ -91,21 +85,16 @@
 
 	function getStatusText(status: string): string {
 		switch (status) {
+			case 'Đã giao':
 			case 'Đã giao hàng':
 			case 'Delivered':
-				return 'Đã giao hàng';
-			case 'Đang giao hàng':
-			case 'Shipped':
-				return 'Đang giao hàng';
+				return 'Đã giao';
 			case 'Đang xử lý':
 			case 'Processing':
 				return 'Đang xử lý';
 			case 'Đã hủy':
 			case 'Cancelled':
 				return 'Đã hủy';
-			case 'Đã xác nhận':
-			case 'Confirmed':
-				return 'Đã xác nhận';
 			default:
 				return status || 'Không xác định';
 		}
@@ -133,10 +122,44 @@
 	function closeOrderDetails() {
 		selectedOrder = null;
 	}
-
 	// Helper function to check if order is delivered for "buy again" functionality
 	function isOrderDelivered(status: string): boolean {
-		return status === 'Đã giao hàng' || status === 'Delivered';
+		return status === 'Đã giao hàng' || status === 'Delivered' || status === 'Đã giao';
+	}
+
+	// Helper function to check if order can be cancelled
+	function canCancelOrder(status: string): boolean {
+		return status === 'Đang xử lý' || status === 'Processing';
+	}
+
+	// Cancel order function
+	async function cancelOrder(orderId: number) {
+		if (!confirm('Bạn có chắc chắn muốn hủy đơn hàng này?')) {
+			return;
+		}
+
+		try {
+			const response = await authenticatedFetch(`http://localhost:8080/api/user/payment/orders/${orderId}/cancel`, {
+				method: 'POST'
+			});
+
+			const result = await response.json();
+			
+			if (result.success) {
+				// Update the order status in the local state
+				orders = orders.map(order => 
+					order.orderId === orderId 
+						? { ...order, status: 'Đã hủy' }
+						: order
+				);
+				alert('Đã hủy đơn hàng thành công!');
+			} else {
+				alert('Lỗi: ' + result.message);
+			}
+		} catch (err) {
+			console.error('Error cancelling order:', err);
+			alert('Có lỗi xảy ra khi hủy đơn hàng');
+		}
 	}
 </script>
 
@@ -219,9 +242,7 @@
 										{/each}
 									</div>
 								</div>
-							</div>
-
-							<div class="ml-6 flex flex-col space-y-2">
+							</div>							<div class="ml-6 flex flex-col space-y-2">
 								<button 
 									on:click={() => viewOrderDetails(order)}
 									class="inline-flex items-center px-3 py-2 border border-blue-600 rounded-md text-sm font-medium text-blue-600 hover:bg-blue-50 transition-colors duration-200"
@@ -232,6 +253,19 @@
 									</svg>
 									Xem chi tiết
 								</button>
+								
+								{#if canCancelOrder(order.status)}
+									<button 
+										on:click={() => cancelOrder(order.orderId)}
+										class="inline-flex items-center px-3 py-2 border border-red-600 rounded-md text-sm font-medium text-red-600 hover:bg-red-50 transition-colors duration-200"
+									>
+										<svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+										</svg>
+										Hủy đơn hàng
+									</button>
+								{/if}
+								
 								{#if isOrderDelivered(order.status)}
 									<button class="inline-flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors duration-200">
 										<svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">

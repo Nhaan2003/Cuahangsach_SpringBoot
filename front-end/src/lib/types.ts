@@ -97,3 +97,54 @@ export interface ApiResponse<T = any> {
 	data?: T;
 	message: string;
 }
+
+export interface OrderDTO {
+	orderId: number;
+	user?: User;
+	orderDate: string;
+	totalAmount: number;
+	status: string;
+	shippingAddress: string;
+	orderDetails?: OrderDetailDTO[];
+}
+
+export interface OrderDetailDTO {
+	orderDetailId?: number;
+	orderId?: number;
+	bookId: number;
+	bookTitle?: string;
+	bookAuthor?: string;
+	quantity: number;
+	priceAtOrder: number;
+}
+
+export interface PaymentDTO {
+	paymentId?: number;
+	orderId: number;
+	amount: number;
+	paymentMethod: string;
+	paymentDate: string;
+	status?: string;
+}
+
+export interface CheckoutRequestDTO {
+	userId: number;
+	items: CheckoutItemDTO[];
+	totalAmount: number;
+	shippingAddress: string;
+	paymentMethod: string;
+}
+
+export interface CheckoutItemDTO {
+	bookId: number;
+	quantity: number;
+	price: number;
+	subtotal: number;
+}
+
+export interface CheckoutResponseDTO {
+	success: boolean;
+	message: string;
+	order?: OrderDTO;
+	payment?: PaymentDTO;
+}

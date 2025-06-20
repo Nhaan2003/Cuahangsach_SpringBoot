@@ -26,8 +26,7 @@
 			<div class="flex justify-between h-16">
 				<div class="flex items-center">
 					<h1 class="text-xl font-semibold text-gray-900">Admin Dashboard</h1>
-				</div>
-				<nav class="flex space-x-8">
+				</div>				<nav class="flex space-x-8">
 					<a href="/admin" class={getLinkClass("/admin")}>
 						Tổng quan
 					</a>
@@ -37,10 +36,13 @@
 					<a href="/admin/products" class={getLinkClass("/admin/products")}>
 						Quản lý sản phẩm
 					</a>
+					<a href="/admin/orders" class={getLinkClass("/admin/orders")}>
+						Quản lý đơn hàng
+					</a>
 					<a href="/admin/inventory" class={getLinkClass("/admin/inventory")}>
 						Báo cáo & Thống kê
 					</a>
-				</nav>				<div class="flex items-center">
+				</nav><div class="flex items-center">
 					<button 
 						on:click={handleLogout} 
 						class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-200"

@@ -75,9 +75,103 @@ public class OrderService {
     public void deleteOrder(Integer orderId) {
         // TODO: Implement order deletion logic
         throw new UnsupportedOperationException("Order deletion not implemented yet");
-    }
-
-    public Long getTotalOrderCount() {
+    }    public Long getTotalOrderCount() {
         return orderRepository.count();
+    }
+    
+    // Admin order management methods
+    
+    /**
+     * Get all orders with details for admin management
+     */
+    public List<Order> getAllOrdersWithDetails() {
+        return orderRepository.findAllWithDetails();
+    }
+    
+    /**
+     * Get order by ID with full details (order details, user info, etc.)
+     */
+    public Order getOrderWithDetailsById(Integer orderId) {
+        return orderRepository.findByIdWithDetails(orderId);
+    }
+    
+    /**
+     * Update order status - for admin approval/management
+     */
+    @Transactional
+    public Order updateOrderStatus(Integer orderId, String newStatus) {
+        Order order = orderRepository.findById(orderId)
+            .orElseThrow(() -> new IllegalArgumentException("Đơn hàng không tồn tại với ID: " + orderId));
+        
+        // Validate status
+        if (!isValidOrderStatus(newStatus)) {
+            throw new IllegalArgumentException("Trạng thái đơn hàng không hợp lệ: " + newStatus);
+        }
+        
+        String oldStatus = order.getStatus();
+        order.setStatus(newStatus);
+        Order updatedOrder = orderRepository.save(order);
+        
+        System.out.println("📋 Order status updated - ID: " + orderId + 
+                         ", From: " + oldStatus + " → To: " + newStatus);
+        
+        return updatedOrder;
+    }
+    
+    /**
+     * Get orders by status with details for admin dashboard
+     */
+    public List<Order> getOrdersByStatusWithDetails(String status) {
+        return orderRepository.findByStatusWithDetails(status);
+    }
+    
+    /**
+     * Get orders within date range for admin reporting
+     */
+    public List<Order> getOrdersByDateRange(String fromDate, String toDate) {
+        return orderRepository.findByDateRange(fromDate, toDate);
+    }
+      /**
+     * Get order statistics for admin dashboard
+     */
+    public OrderStatistics getOrderStatistics() {
+        Long totalOrders = orderRepository.count();
+        Long pendingOrders = orderRepository.countByStatus("Đang xử lý");
+        Long deliveredOrders = orderRepository.countByStatus("Đã giao");
+        Long cancelledOrders = orderRepository.countByStatus("Đã hủy");
+        
+        return new OrderStatistics(totalOrders, pendingOrders, deliveredOrders, cancelledOrders);
+    }
+      /**
+     * Validate order status values
+     */
+    private boolean isValidOrderStatus(String status) {
+        return status.equals("Đang xử lý") || 
+               status.equals("Đã giao") || 
+               status.equals("Đã hủy");
+    }    /**
+     * Inner class for order statistics
+     */
+    public static class OrderStatistics {
+        private final Long totalOrders;
+        private final Long pendingOrders;
+        private final Long deliveredOrders;
+        private final Long cancelledOrders;
+        
+        public OrderStatistics(Long totalOrders, Long pendingOrders, Long deliveredOrders, Long cancelledOrders) {
+            this.totalOrders = totalOrders;
+            this.pendingOrders = pendingOrders;
+            this.deliveredOrders = deliveredOrders;
+            this.cancelledOrders = cancelledOrders;
+        }
+        
+        // Getters
+        public Long getTotalOrders() { return totalOrders; }
+        public Long getPendingOrders() { return pendingOrders; }
+        public Long getDeliveredOrders() { return deliveredOrders; }
+        public Long getCancelledOrders() { return cancelledOrders; }
+        
+        // For backward compatibility
+        public Long getCompletedOrders() { return deliveredOrders; }
     }
 }

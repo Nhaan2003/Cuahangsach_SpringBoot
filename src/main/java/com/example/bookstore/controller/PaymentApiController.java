@@ -180,9 +180,7 @@ public class PaymentApiController {
             response.put("message", "Lỗi khi lấy danh sách đơn hàng: " + e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
         }
-    }
-
-    /**
+    }    /**
      * POST /api/user/payment/orders/{orderId}/status - Update order status (for admin use)
      */
     @PostMapping("/orders/{orderId}/status")
@@ -227,14 +225,46 @@ public class PaymentApiController {
     }
 
     /**
+     * POST /api/user/payment/orders/{orderId}/cancel - Cancel order by customer
+     */
+    @PostMapping("/orders/{orderId}/cancel")
+    public ResponseEntity<Map<String, Object>> cancelOrder(
+            @PathVariable Integer orderId,
+            @RequestHeader("Authorization") String token) {
+        try {
+            // Get current user from token
+            UserDTO currentUser = authFacade.getCurrentUser(token.replace("Bearer ", ""));
+            if (currentUser == null) {
+                Map<String, Object> response = new HashMap<>();
+                response.put("success", false);
+                response.put("message", "Token không hợp lệ");
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
+            }
+
+            OrderDTO cancelledOrder = paymentFacade.cancelOrder(orderId, currentUser.getUserId());
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("data", cancelledOrder);
+            response.put("message", "Đã hủy đơn hàng thành công");
+            return ResponseEntity.ok(response);
+            
+        } catch (IllegalArgumentException e) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("message", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+        } catch (Exception e) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("message", "Lỗi khi hủy đơn hàng: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+        }
+    }    /**
      * Validate order status values
      */
     private boolean isValidOrderStatus(String status) {
-        return status.equals("Pending") || 
-               status.equals("Confirmed") || 
-               status.equals("Processing") || 
-               status.equals("Shipped") || 
-               status.equals("Delivered") || 
-               status.equals("Cancelled");
+        return status.equals("Đang xử lý") || 
+               status.equals("Đã giao") || 
+               status.equals("Đã hủy");
     }
 }

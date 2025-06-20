@@ -91,13 +91,11 @@ public class PaymentFacade {
         // 3. Verify total amount
         if (calculatedTotal.compareTo(checkoutRequest.getTotalAmount()) != 0) {
             throw new IllegalArgumentException("Tổng tiền không chính xác");
-        }
-
-        // 4. Create order
+        }        // 4. Create order
         Order order = createOrder(user, checkoutRequest);
 
-        // 5. Create order details and update stock
-        List<OrderDetail> orderDetails = createOrderDetails(order, items);
+        // 5. Create order details (NO STOCK UPDATE - only when delivered)
+        List<OrderDetail> orderDetails = createOrderDetailsWithoutStockUpdate(order, items);
 
         // 6. Create payment record
         Payment payment = createPayment(order, checkoutRequest.getPaymentMethod());
@@ -128,12 +126,37 @@ public class PaymentFacade {
         order.setOrderDate(LocalDateTime.now());
 
         return orderService.save(order);
+    }    /**
+     * Create order details WITHOUT updating stock (for new orders)
+     */
+    private List<OrderDetail> createOrderDetailsWithoutStockUpdate(Order order, List<CheckoutItemDTO> items) {
+        List<OrderDetail> orderDetails = new ArrayList<>();
+
+        for (CheckoutItemDTO item : items) {
+            Book book = bookService.getBookById(item.getBookId());
+
+            // Create order detail
+            OrderDetail orderDetail = new OrderDetail();
+            orderDetail.setOrder(order);
+            orderDetail.setBook(book);
+            orderDetail.setQuantity(item.getQuantity());
+            orderDetail.setPriceAtOrder(item.getPrice());
+
+            OrderDetail savedOrderDetail = orderDetailService.save(orderDetail);
+            orderDetails.add(savedOrderDetail);
+
+            System.out.println("📦 Order detail created for book: " + book.getTitle() + 
+                             ", Quantity: " + item.getQuantity() + 
+                             ", Status: Đang xử lý (NO stock update)");
+        }
+
+        return orderDetails;
     }
 
     /**
-     * Create order details and update book stock
+     * Create order details WITH stock update and inventory transactions (when order is delivered)
      */
-    private List<OrderDetail> createOrderDetails(Order order, List<CheckoutItemDTO> items) {
+    private List<OrderDetail> createOrderDetailsWithStockUpdate(Order order, List<CheckoutItemDTO> items) {
         List<OrderDetail> orderDetails = new ArrayList<>();
         List<InventoryDTO> inventoryDTOs = new ArrayList<>();
 
@@ -221,9 +244,7 @@ public class PaymentFacade {
         return orders.stream()
                 .map(OrderDTO::new)
                 .toList();
-    }
-
-    /**
+    }    /**
      * Update order status
      */
     @Transactional
@@ -237,5 +258,32 @@ public class PaymentFacade {
         Order updatedOrder = orderService.save(order);
 
         return new OrderDTO(updatedOrder);
+    }
+    
+    /**
+     * Cancel order by customer (only if status is "Đang xử lý")
+     */
+    @Transactional
+    public OrderDTO cancelOrder(Integer orderId, Integer userId) {
+        // Get order with details
+        Order order = orderService.getOrderById(orderId)
+            .orElseThrow(() -> new IllegalArgumentException("Đơn hàng không tồn tại với ID: " + orderId));
+        
+        // Validate ownership
+        if (!order.getUser().getUserId().equals(userId)) {
+            throw new IllegalArgumentException("Bạn không có quyền hủy đơn hàng này");
+        }
+        
+        // Only allow cancellation if order is still processing
+        if (!"Đang xử lý".equals(order.getStatus())) {
+            throw new IllegalArgumentException("Chỉ có thể hủy đơn hàng đang xử lý. Trạng thái hiện tại: " + order.getStatus());
+        }
+        
+        // Update order status to cancelled
+        Order cancelledOrder = orderService.updateOrderStatus(orderId, "Đã hủy");
+        
+        System.out.println("❌ Customer cancelled order - ID: " + orderId + ", User: " + userId);
+        
+        return new OrderDTO(cancelledOrder);
     }
 }
